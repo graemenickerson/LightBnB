@@ -93,6 +93,58 @@ exports.getAllReservations = getAllReservations;
 
 // / Properties
 
+// Builds SELECT statement for searching database
+const buildQuery = (options, limit) => {
+  let paramAdd = '';
+  let paramFirst = true;
+  const queryParams = [];
+  let queryString = `
+    SELECT properties.*, avg(property_reviews.rating) as average_rating
+    FROM properties
+    JOIN property_reviews ON properties.id = property_id
+  `;
+
+  if(options.owner_id) {
+    paramFirst ? paramAdd = 'WHERE' : paramAdd = 'AND';
+    queryParams.push(`${options.owner_id}`);
+    queryString += `${paramAdd} owner_id = $${queryParams.length} `;
+    paramFirst = false;
+  }
+  if (options.city) {
+    paramFirst ? paramAdd = 'WHERE' : paramAdd = 'AND';
+    queryParams.push(`%${options.city}%`);
+    queryString += `${paramAdd} LOWER(city) LIKE LOWER($${queryParams.length}) `;
+    paramFirst = false;
+  }
+  if (options.minimum_price_per_night) {
+    paramFirst ? paramAdd = 'WHERE' : paramAdd = 'AND';
+    queryParams.push(`${options.minimum_price_per_night}`);
+    queryString += `${paramAdd} cost_per_night >= $${queryParams.length} `;
+    paramFirst = false;
+  }
+  if (options.maximum_price_per_night) {
+    paramFirst ? paramAdd = 'WHERE' : paramAdd = 'AND';
+    queryParams.push(`${options.maximum_price_per_night}`);
+    queryString += `${paramAdd} cost_per_night <= $${queryParams.length} `;
+    paramFirst = false;
+  }
+
+  queryString += `GROUP BY properties.id `;
+
+  if (options.minimum_rating) {
+    // paramFirst ? paramAdd = 'WHERE' : paramAdd = 'AND';
+    queryParams.push(`${options.minimum_rating}`);
+    queryString += `HAVING AVG(property_reviews.rating) >= $${queryParams.length} `;
+    paramFirst = false;
+  }
+
+  queryParams.push(limit);
+  queryString += `
+    ORDER BY cost_per_night
+    LIMIT $${queryParams.length};
+  `;
+  return [queryString, queryParams];
+};
 /**
  * Get all properties.
  * @param {{}} options An object containing query options.
@@ -100,10 +152,8 @@ exports.getAllReservations = getAllReservations;
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = function(options, limit = 10) {
-  return pool.query(`
-  SELECT * FROM properties
-  LIMIT $1
-  `, [limit])
+  const queryParams = buildQuery(options, limit);
+  return pool.query(queryParams[0], queryParams[1])
   .then(res => res.rows);
 };
 exports.getAllProperties = getAllProperties;

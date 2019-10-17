@@ -1,14 +1,8 @@
-const properties = require('./json/properties.json');
-const users = require('./json/users.json');
+// database.js
+// Graeme Nickerson
+// October 2019
 
-// Set up database
-const { Pool } = require('pg');
-const pool = new Pool({
-  user: 'vagrant',
-  password: '123',
-  host: 'localhost',
-  database: 'lightbnb'
-});
+const db = require('./db/index.js');
 
 // / Users
 
@@ -23,7 +17,7 @@ const getUserWithEmail = function(email) {
     FROM users
     WHERE LOWER(email) = LOWER($1);
   `;
-  return pool.query(sqlStatment, [email])
+  return db.query(sqlStatment, [email])
     .then(res => res.rows[0])
     .catch((err) => {return null});
 };
@@ -40,7 +34,7 @@ const getUserWithId = function(id) {
     FROM users
     WHERE id = $1;
   `;
-  return pool.query(sqlStatment, [id])
+  return db.query(sqlStatment, [id])
     .then(res => res.rows[0])
     .catch((err) => {return null});
 };
@@ -59,7 +53,7 @@ const addUser = function(user) {
     VALUES ( $1, $2, $3)
     RETURNING id;
   `;
-  return pool.query(sqlStatment, values)
+  return db.query(sqlStatment, values)
     .then(res => res.rows)
     .catch((err) => {return null});
 };
@@ -85,7 +79,7 @@ const getAllReservations = function(guest_id, limit = 10) {
     ORDER BY reservations.start_date DESC
     LIMIT $2;
   `;
-  return pool.query(sqlStatment, values)
+  return db.query(sqlStatment, values)
     .then(res => res.rows)
     .catch((err) => {return null});
 }
@@ -153,7 +147,7 @@ const buildQuery = (options, limit) => {
  */
 const getAllProperties = function(options, limit = 10) {
   const queryParams = buildQuery(options, limit);
-  return pool.query(queryParams[0], queryParams[1])
+  return db.query(queryParams[0], queryParams[1])
   .then(res => res.rows);
 };
 exports.getAllProperties = getAllProperties;
@@ -186,7 +180,7 @@ const addProperty = function(property) {
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     RETURNING *;
   `;
-  return pool.query(sqlStatment, values)
+  return db.query(sqlStatment, values)
     .then(res => res.rows[0])
     .catch((err) => {return null});
 };

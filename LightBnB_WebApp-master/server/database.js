@@ -18,13 +18,14 @@ const pool = new Pool({
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = function(email) {
-  return pool.query(`
+  const sqlStatment = `
     SELECT *
     FROM users
     WHERE LOWER(email) = LOWER($1);
-  `, [email])
-  .then(res => res.rows)
-  .catch((err) => {return null});
+  `;
+  return pool.query(sqlStatment, [email])
+    .then(res => res.rows[0])
+    .catch((err) => {return null});
 };
 exports.getUserWithEmail = getUserWithEmail;
 
@@ -34,13 +35,14 @@ exports.getUserWithEmail = getUserWithEmail;
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithId = function(id) {
-  return pool.query(`
+  const sqlStatment = `
     SELECT *
     FROM users
     WHERE id = $1;
-  `, [id])
-  .then(res => res.rows)
-  .catch((err) => {return null});
+  `;
+  return pool.query(sqlStatment, [id])
+    .then(res => res.rows[0])
+    .catch((err) => {return null});
 };
 exports.getUserWithId = getUserWithId;
 
@@ -51,13 +53,15 @@ exports.getUserWithId = getUserWithId;
  * @return {Promise<{}>} A promise to the user.
  */
 const addUser = function(user) {
-  return pool.query(`
+  const values = [user.name, user.email, user.password];
+  const sqlStatment = `
     INSERT INTO users (name, email, password)
     VALUES ( $1, $2, $3)
     RETURNING id;
-  `, [user.name, user.email, user.password])
-  .then(res => res.rows)
-  .catch((err) => {return null});
+  `;
+  return pool.query(sqlStatment, values)
+    .then(res => res.rows)
+    .catch((err) => {return null});
 };
 exports.addUser = addUser;
 
@@ -69,7 +73,21 @@ exports.addUser = addUser;
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  const values = [guest_id, limit];
+  const sqlStatment = `
+    SELECT properties.*, reservations.*, avg(rating) as average_rating
+    FROM reservations
+    JOIN properties ON reservations.property_id = properties.id
+    JOIN property_reviews ON properties.id = property_reviews.property_id 
+    WHERE reservations.guest_id = $1
+    AND start_date <> NOW() OR end_date <> NOW()
+    GROUP BY properties.id, reservations.id
+    ORDER BY reservations.start_date DESC
+    LIMIT $2;
+  `;
+  return pool.query(sqlStatment, values)
+    .then(res => res.rows)
+    .catch((err) => {return null});
 }
 exports.getAllReservations = getAllReservations;
 
